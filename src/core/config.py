@@ -95,6 +95,7 @@ class Config:
         "FCS_BROWSER_FINGERPRINT_POOL_EXTRA_COUNT",
         "FCS_BROWSER_CUSTOM_PAGE_CACHE_MAX_PAGES",
         "FCS_BROWSER_CUSTOM_PAGE_IDLE_TTL_SECONDS",
+        "FCS_BROWSER_CUSTOM_PAGE_MODE",
         "FCS_BROWSER_PROJECT_AFFINITY_MAX_KEYS",
         "FCS_BROWSER_PROJECT_AFFINITY_TTL_SECONDS",
         "FCS_BROWSER_FLOW_WEBSITE_KEY",
@@ -217,6 +218,7 @@ class Config:
                 "browser_fingerprint_pool_extra_count": 100,
                 "browser_custom_page_cache_max_pages": 3,
                 "browser_custom_page_idle_ttl_seconds": 240,
+                "browser_custom_page_mode": "auto",
                 "browser_project_affinity_max_keys": 0,
                 "browser_project_affinity_ttl_seconds": 1800,
                 "browser_flow_website_key": "6LdsFiUsAAAAAIjVDZcuLhaHiDn5nnHVXVRQGeMV",
@@ -505,6 +507,18 @@ class Config:
             return max(30.0, float(self._get("captcha", "browser_custom_page_idle_ttl_seconds", 240)))
         except Exception:
             return 240.0
+
+    @property
+    def browser_custom_page_mode(self) -> str:
+        value = os.getenv("FCS_BROWSER_CUSTOM_PAGE_MODE")
+        if value is not None:
+            mode = str(value).strip().lower()
+            if mode in {"inject", "native", "auto"}:
+                return mode
+        mode = str(self._get("captcha", "browser_custom_page_mode", "auto") or "").strip().lower()
+        if mode in {"inject", "native", "auto"}:
+            return mode
+        return "auto"
 
     @property
     def browser_project_affinity_max_keys(self) -> int:

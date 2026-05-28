@@ -924,6 +924,12 @@ class TokenBrowser:
         except Exception:
             return 240.0
 
+    def _custom_page_mode(self) -> str:
+        mode = str(getattr(config, "browser_custom_page_mode", "auto") or "").strip().lower()
+        if mode in {"inject", "native", "auto"}:
+            return mode
+        return "auto"
+
     def _get_slot_marker(self) -> str:
         return f"--flow2api-browser-slot={self.token_id}"
 
@@ -3409,6 +3415,7 @@ class TokenBrowser:
             self._solve_inflight += 1
             max_retries = self._retry_max_attempts()
             retry_backoff_seconds = self._retry_backoff_seconds()
+            custom_page_mode = self._custom_page_mode()
 
             try:
                 for attempt in range(max_retries):
@@ -3427,8 +3434,22 @@ class TokenBrowser:
                             enterprise=enterprise,
                             captcha_type=captcha_type,
                             is_invisible=is_invisible,
-                            reuse_ready_page=False,
+                            reuse_ready_page=(custom_page_mode != "native"),
                         )
+                        if not token and custom_page_mode == "auto":
+                            debug_logger.log_warning(
+                                f"[BrowserCaptcha] Token-{self.token_id} inject 模式失败，自动回退 native 重试"
+                            )
+                            token = await self._execute_custom_captcha(
+                                context=context,
+                                website_url=website_url,
+                                website_key=website_key,
+                                action=action,
+                                enterprise=enterprise,
+                                captcha_type=captcha_type,
+                                is_invisible=is_invisible,
+                                reuse_ready_page=False,
+                            )
 
                         if token:
                             self._solve_count += 1
@@ -3494,6 +3515,7 @@ class TokenBrowser:
             self._solve_inflight += 1
             max_retries = self._retry_max_attempts()
             retry_backoff_seconds = self._retry_backoff_seconds()
+            custom_page_mode = self._custom_page_mode()
 
             try:
                 for attempt in range(max_retries):
@@ -3511,8 +3533,21 @@ class TokenBrowser:
                             action=action,
                             verify_url=verify_url,
                             enterprise=enterprise,
-                            reuse_ready_page=False,
+                            reuse_ready_page=(custom_page_mode != "native"),
                         )
+                        if (not isinstance(payload, dict) or not payload.get("token")) and custom_page_mode == "auto":
+                            debug_logger.log_warning(
+                                f"[BrowserCaptcha] Token-{self.token_id} inject score 模式失败，自动回退 native 重试"
+                            )
+                            payload = await self._execute_custom_captcha(
+                                context=context,
+                                website_url=website_url,
+                                website_key=website_key,
+                                action=action,
+                                verify_url=verify_url,
+                                enterprise=enterprise,
+                                reuse_ready_page=False,
+                            )
 
                         if isinstance(payload, dict) and payload.get("token"):
                             self._solve_count += 1
